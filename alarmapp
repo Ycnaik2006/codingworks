@@ -1,0 +1,114 @@
+import time
+import threading
+import pygame
+from datetime import datetime
+
+# Dictionaries to store alarms and to-do list tasks
+alarms = {}
+todos = []
+
+# Locks for thread safety
+alarms_lock = threading.Lock()
+
+# Initialize pygame for audio
+pygame.mixer.init()
+
+def set_alarm():
+    try:
+        alarm_time = input("Enter the time for the alarm (HH:MM): ")
+        alarm_task = input("Enter a task for this alarm: ")
+
+        with alarms_lock:
+            alarms[alarm_time] = alarm_task
+
+        print(f"Alarm set for {alarm_time} with task: {alarm_task}")
+
+    except KeyboardInterrupt:
+        print("\nAlarm setting canceled.")
+
+def show_alarms():
+    with alarms_lock:
+        print("\nCurrent Alarms:")
+        for time, task in alarms.items():
+            print(f"Time: {time}, Task: {task}")
+        print()
+
+def add_todo():
+    try:
+        todo_task = input("Enter a task for your to-do list: ")
+        todos.append(todo_task)
+        print(f"Added '{todo_task}' to your to-do list.")
+    except KeyboardInterrupt:
+        print("\nTo-do list task addition canceled.")
+
+def show_todo_list():
+    print("\nTo-Do List:")
+    for idx, task in enumerate(todos, start=1):
+        print(f"{idx}. {task}")
+    print()
+
+# Function to check for alarms and trigger them
+def check_alarms():
+    while True:
+        current_time = datetime.now().strftime("%H:%M")
+        alarms_to_trigger = []
+
+        with alarms_lock:
+            alarms_to_trigger = [alarm_time for alarm_time in alarms if alarm_time == current_time]
+
+        for alarm_time in alarms_to_trigger:
+            with alarms_lock:
+                print(f"ALARM: {alarms[alarm_time]}")
+                del alarms[alarm_time]  # Remove the triggered alarms
+
+            play_alarm_sound()
+
+        time.sleep(60)  # Check for alarms every minute
+
+def play_alarm_sound():
+    # Replace 'path_to_sound_file.wav' with the actual path to your sound file
+    sound_path = 'alarm-clock-short-6402.wav'
+
+    try:
+        pygame.mixer.music.load(sound_path)
+        pygame.mixer.music.play()
+        while pygame.mixer.music.get_busy():
+            pygame.time.Clock().tick(10)
+
+    except Exception as e:
+        print(f"Failed to play the alarm sound: {e}")
+
+# Create and start the alarm thread
+alarm_thread = threading.Thread(target=check_alarms)
+alarm_thread.daemon = True  # Set the thread as a daemon so it exits when the main program exits
+alarm_thread.start()
+
+def main():
+    print("Welcome to the Alarm App with To-Do List!")
+
+    while True:
+        print("\nOptions:")
+        print("1. Set an alarm")
+        print("2. Show alarms and tasks")
+        print("3. Add a task to your to-do list")
+        print("4. Show your to-do list")
+        print("5. Exit")
+
+        choice = input("Enter your choice (1/2/3/4/5): ")
+
+        if choice == '1':
+            set_alarm()
+        elif choice == '2':
+            show_alarms()
+        elif choice == '3':
+            add_todo()
+        elif choice == '4':
+            show_todo_list()
+        elif choice == '5':
+            print("Exiting the Alarm App.")
+            break
+        else:
+            print("Invalid choice. Please select a valid option.")
+
+if __name__ == "__main__":
+    main()
